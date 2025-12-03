@@ -49,6 +49,16 @@ const CUSTOM_CSS = `
     box-shadow: none !important;
   }
 
+  .py-2.px-3.rounded-2.color-bg-subtle {
+    background-color: rgb(247, 248, 250) !important;
+  }
+
+  .blob-wrapper.border-bottom,
+  .js-comments-holder,
+  js-inline-comments-container {
+    background-color: #ffffff !important;
+  }
+
   /* 코멘트 헤더 줄(예: "dongmin-dev commented on Oct 19") 배경만 살짝 회색으로 */
   .timeline-comment-header {
     background-color: #f6f8fa !important;  /* GitHub 라이트 헤더색 */
