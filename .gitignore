@@ -1,6 +1,5 @@
 # General
-pr-comments.png
-pr-comments-with-merge.png
+pr-comments*.png
 temp/
 user_data/
 .DS_Store
