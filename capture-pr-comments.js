@@ -123,10 +123,30 @@ const findDiscussionRoot = async (page) =>
   (await page.$("#discussion_bucket")) || (await page.$(".js-discussion"));
 
 const captureDiscussionScreenshot = async (page, root, paddingBottom = 50) => {
-  const box = await root.boundingBox();
+  let box = await root.boundingBox();
 
   if (!box) {
     throw new Error("boundingBox 를 얻지 못했습니다.");
+  }
+
+  // 상단 탭(.tabnav)이 있으면 영역에 포함시킵니다.
+  const tabnav = await page.$(".tabnav");
+  if (tabnav) {
+    const tabBox = await tabnav.boundingBox();
+    if (tabBox) {
+      // 탭의 상단(y)부터 discussion의 하단까지 포함하도록 영역 확장
+      const newY = Math.min(box.y, tabBox.y);
+      const newHeight = (box.y + box.height) - newY;
+      
+      // x축과 너비도 두 영역을 모두 포함하도록 조정
+      const newX = Math.min(box.x, tabBox.x);
+      const newWidth = Math.max(box.x + box.width, tabBox.x + tabBox.width) - newX;
+
+      box.x = newX;
+      box.y = newY;
+      box.width = newWidth;
+      box.height = newHeight;
+    }
   }
 
   await page.screenshot({
