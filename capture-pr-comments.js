@@ -21,7 +21,6 @@ const CUSTOM_CSS = `
   .application-main,
   .Layout,
   .Layout-main,
-  #repo-content-pjax-container,
   #discussion_bucket,
   .js-discussion {
     background-color: transparent !important;
@@ -32,7 +31,6 @@ const CUSTOM_CSS = `
   .Header,
   .Footer,
   .footer,
-  .pagehead,
   .gh-header,
   .gh-header-sticky,
   .flash,
@@ -82,8 +80,6 @@ const CUSTOM_CSS = `
   }
 `;
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-
 const getPrUrl = () => process.argv[2] || DEFAULT_PR_URL;
 
 const launchBrowser = async () => {
@@ -105,8 +101,13 @@ const forceLightTheme = async (page) => {
   });
 };
 
-const waitForDiscussionArea = (page) =>
-  page.waitForSelector(DISCUSSION_SELECTOR, { timeout: 10000 });
+const waitForContent = async (page) => {
+  // discussion 영역과 코멘트가 로드될 때까지 기다림
+  await Promise.all([
+    page.waitForSelector(DISCUSSION_SELECTOR, { timeout: 10000 }),
+    page.waitForSelector(".timeline-comment", { timeout: 10000 }),
+  ]);
+};
 
 const adjustViewportToContent = async (page) => {
   const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
@@ -114,6 +115,7 @@ const adjustViewportToContent = async (page) => {
     width: VIEWPORT.width,
     height: Math.min(bodyHeight, MAX_VIEWPORT_HEIGHT),
   });
+  // 뷰포트 조정 후 스크롤을 맨 위로 초기화
   await page.evaluate(() => window.scrollTo(0, 0));
 };
 
@@ -142,10 +144,7 @@ const captureDiscussionScreenshot = async (page, root, paddingBottom = 50) => {
       const newX = Math.min(box.x, tabBox.x);
       const newWidth = Math.max(box.x + box.width, tabBox.x + tabBox.width) - newX;
 
-      box.x = newX;
-      box.y = newY;
-      box.width = newWidth;
-      box.height = newHeight;
+      box = { x: newX, y: newY, width: newWidth, height: newHeight };
     }
   }
 
@@ -170,8 +169,8 @@ const run = async () => {
     await page.goto(prUrl, { waitUntil: "networkidle0" });
 
     await forceLightTheme(page);
-    await sleep(4000);
-    await waitForDiscussionArea(page);
+    // sleep 제거하고 명시적인 대기 사용
+    await waitForContent(page);
     await adjustViewportToContent(page);
     await injectCaptureStyles(page);
 
