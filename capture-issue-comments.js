@@ -14,17 +14,33 @@ const SCREENSHOT_PATH = "issue-comments.png";
 const CUSTOM_CSS = `
   /* 전체 배경을 투명으로 */
   html, body {
-    background: transparent !important;
+    background-color: transparent !important;
   }
 
-  /* 바깥 큰 컨테이너들만 투명하게 (카드 내부는 건드리지 않음) */
-  body,
-  .application-main,
-  .Layout,
-  .Layout-main,
-  main,
-  [data-turbo-body] {
+  [class*="IssueViewer-module"] {
     background-color: transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+
+  .kGvEaV {
+    display: none !important;
+  }
+
+  .prc-Timeline-TimelineItem-Sd-t-:before {
+    display: none !important;
+  }
+
+  [class*="IssueBodyViewer-module"],
+  [class*="IssueCommentViewer-module"],
+  [class*="IssueCommentContent-module"] {
+    background-color: #ffffff !important;
+    border-radius: 6px !important;
+  }
+
+  /* 코멘트 박스에 테두리만 확실하게 추가 (배경은 기본 흰색 유지) */
+  #issue-body-viewer {
+    border-radius: 6px !important;
   }
 
   /* 헤더/푸터/사이드바는 숨김 */
@@ -38,27 +54,9 @@ const CUSTOM_CSS = `
   .discussion-sidebar,
   .Layout-sidebar,
   .discussion-timeline-actions,
+  #repository-container-header,
   [class*="SignedOutBanner-module"] {
     display: none !important;
-  }
-
-  /* 코멘트 카드의 그림자만 제거 (레이아웃/간격은 그대로) */
-  .TimelineItem,
-  .timeline-comment-group,
-  .js-comment-container {
-    box-shadow: none !important;
-  }
-
-  .py-2.px-3.rounded-2.color-bg-subtle {
-    background-color: rgb(247, 248, 250) !important;
-  }
-
-  /* Issue 본문 배경 */
-  .js-issue-body,
-  .comment-body,
-  .markdown-body,
-  [class*="IssueBody-module"] {
-    background-color: #ffffff !important;
   }
 
   /* 코멘트 헤더 줄(예: "dongmin-dev commented on Oct 19") 배경만 살짝 회색으로 */
@@ -67,25 +65,19 @@ const CUSTOM_CSS = `
   [class*="IssueBodyHeader-module"] {
     background-color: #f6f8fa !important;  /* GitHub 라이트 헤더색 */
   }
-
-  /* 코멘트 박스에 테두리만 확실하게 추가 (배경은 기본 흰색 유지) */
-  .timeline-comment,
-  .js-comment-container .review-comment,
-  .review-comment,
-  [class*="IssueBody-module__body"],
-  [class*="Activity-module__activity"] {
-    border: 1px solid #d0d7de !important;  /* GitHub 기본 테두리색 */
-    background-color: #ffffff !important;
-  }
   
   .TimelineItem-break {
     background-color: transparent !important;
   }
 
-  /* Activity 영역 배경 투명화 */
-  [class*="ActivityContainer-module"],
-  [class*="IssueContainer-module"] {
-    background-color: transparent !important;
+  .inserted-circle {
+    width: 28px;
+    height: 28px;
+    background-color: rgb(246, 248, 250);
+    border-radius: 50%;
+    position: absolute;
+    z-index: 1;
+    box-sizing: border-box;
   }
 `;
 
@@ -128,6 +120,43 @@ const adjustViewportToContent = async (page) => {
 };
 
 const injectCaptureStyles = (page) => page.addStyleTag({ content: CUSTOM_CSS });
+
+const insertCircles = async (page) => {
+  await page.evaluate(() => {
+    const svgs = document.querySelectorAll("svg.octicon-person");
+    svgs.forEach((svg) => {
+      const parent = svg.parentNode;
+      if (!parent) return;
+
+      const parentStyle = window.getComputedStyle(parent);
+      if (parentStyle.position === "static") {
+        parent.style.position = "relative";
+      }
+
+      // svg를 원보다 앞으로
+      svg.style.position = "relative";
+      svg.style.zIndex = "2";
+
+      const circle = document.createElement("div");
+      circle.className = "inserted-circle";
+
+      // svg 중심에 원 배치
+      // svg.getBBox()는 SVG 내부 좌표라 안 맞을 수 있음. getBoundingClientRect() 사용.
+      // 하지만 offsetLeft/Top을 써야 relative 부모 기준 좌표가 나옴.
+      // svg가 inline이면 offsetWidth/Height가 0일 수도 있으니 getBoundingClientRect 활용.
+      const rect = svg.getBoundingClientRect();
+      
+      // offsetLeft/Top 사용이 안전 (부모 기준)
+      const left = svg.offsetLeft + rect.width / 2 - 14; // 14 = 28/2
+      const top = svg.offsetTop + rect.height / 2 - 14;
+
+      circle.style.left = `${left}px`;
+      circle.style.top = `${top}px`;
+
+      parent.insertBefore(circle, svg);
+    });
+  });
+};
 
 const findMainContentRoot = async (page) =>
   (await page.$("main")) || 
@@ -179,6 +208,7 @@ const run = async () => {
     await waitForContent(page);
     await adjustViewportToContent(page);
     await injectCaptureStyles(page);
+    await insertCircles(page);
 
     const root = await findMainContentRoot(page);
 
