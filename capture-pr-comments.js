@@ -47,10 +47,6 @@ const CUSTOM_CSS = `
     box-shadow: none !important;
   }
 
-  .py-2.px-3.rounded-2.color-bg-subtle {
-    background-color: rgb(247, 248, 250) !important;
-  }
-
   .blob-wrapper.border-bottom,
   .js-comments-holder,
   js-inline-comments-container {
